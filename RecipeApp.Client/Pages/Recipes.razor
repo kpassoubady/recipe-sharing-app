@@ -1,0 +1,285 @@
+@page "/recipes"
+@using RecipeApp.Shared.DTOs
+@using RecipeApp.Shared.Models
+@inject RecipeService RecipeService
+
+<PageTitle>Recipes</PageTitle>
+
+<h1>Recipe Collection</h1>
+
+<div class="search-box mb-4">
+    <div class="row">
+        <div class="col-md-8">
+            <input type="text" class="form-control" placeholder="Search by name, description, or ingredients (comma separated)" @bind="searchQuery" />
+        </div>
+        <div class="col-md-4">
+            <select class="form-select" @bind="selectedTag">
+                <option value="">All Tags</option>
+                @foreach (var tag in availableTags)
+                {
+                    <option value="@tag">@tag</option>
+                }
+            </select>
+        </div>
+    </div>
+    <button class="btn btn-primary mt-2" @onclick="SearchRecipes">Search</button>
+    <button class="btn btn-secondary mt-2 ms-2" @onclick="ClearFilters">Clear Filters</button>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(loadError))
+{
+    <div class="alert alert-danger" role="alert">
+        @loadError
+    </div>
+}
+
+@if (recipes == null)
+{
+    <p><em>Loading recipes...</em></p>
+}
+else if (!recipes.Any())
+{
+    <p><em>No recipes found.</em></p>
+}
+else
+{
+    <div class="row">
+        @foreach (var recipe in recipes)
+        {
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">@recipe.Name</h5>
+                        <p class="card-text">@recipe.Description</p>
+                        
+                        <div class="mb-2">
+                            <span class="badge bg-info">@recipe.Category</span>
+                            <span class="badge bg-warning text-dark">@recipe.DifficultyLevel</span>
+                        </div>
+                        
+                        <div class="mb-2">
+                            <small>
+                                ⏱️ Prep: @recipe.PrepTimeMinutes min | Cook: @recipe.CookTimeMinutes min
+                            </small>
+                        </div>
+                        
+                        <div class="mb-2">
+                            <small>
+                                ⭐ @recipe.AverageRating.ToString("F1") (@recipe.RatingCount reviews)
+                            </small>
+                        </div>
+                        
+                        @if (recipe.Tags.Any())
+                        {
+                            <div class="mb-2">
+                                @foreach (var tag in recipe.Tags)
+                                {
+                                    <span class="badge bg-secondary me-1">@tag</span>
+                                }
+                            </div>
+                        }
+                        
+                        <button class="btn btn-sm btn-primary" @onclick="() => ShowRecipeDetails(recipe.Id)">
+                            View Details
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@if (selectedRecipe != null)
+{
+    <div class="modal show d-block" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@selectedRecipe.Name</h5>
+                    <button type="button" class="btn-close" @onclick="CloseDetails"></button>
+                </div>
+                <div class="modal-body">
+                    <p><strong>Category:</strong> @selectedRecipe.Category</p>
+                    <p><strong>Difficulty:</strong> @selectedRecipe.DifficultyLevel</p>
+                    <p><strong>Servings:</strong> @selectedRecipe.Servings</p>
+                    <p><strong>Prep Time:</strong> @selectedRecipe.PrepTimeMinutes minutes</p>
+                    <p><strong>Cook Time:</strong> @selectedRecipe.CookTimeMinutes minutes</p>
+                    <p><strong>Total Time:</strong> @selectedRecipe.TotalTimeMinutes minutes</p>
+                    
+                    <h6 class="mt-3">Description</h6>
+                    <p>@selectedRecipe.Description</p>
+                    
+                    <h6 class="mt-3">Ingredients</h6>
+                    <ul>
+                        @foreach (var ingredient in selectedRecipe.Ingredients)
+                        {
+                            <li>@ingredient.Quantity @ingredient.Unit @ingredient.Name</li>
+                        }
+                    </ul>
+                    
+                    <h6 class="mt-3">Instructions</h6>
+                    <pre style="white-space: pre-wrap;">@selectedRecipe.Instructions</pre>
+                    
+                    @if (selectedRecipe.NutritionInfo != null)
+                    {
+                        <h6 class="mt-3">Nutrition Information (per serving)</h6>
+                        <ul>
+                            <li>Calories: @selectedRecipe.NutritionInfo.Calories kcal</li>
+                            <li>Protein: @selectedRecipe.NutritionInfo.Protein g</li>
+                            <li>Carbohydrates: @selectedRecipe.NutritionInfo.Carbohydrates g</li>
+                            <li>Fat: @selectedRecipe.NutritionInfo.Fat g</li>
+                            <li>Fiber: @selectedRecipe.NutritionInfo.Fiber g</li>
+                        </ul>
+                    }
+                    
+                    <h6 class="mt-3">Reviews</h6>
+                    @if (selectedRecipe.Ratings.Any())
+                    {
+                        @foreach (var rating in selectedRecipe.Ratings)
+                        {
+                            <div class="card mb-2">
+                                <div class="card-body">
+                                    <h6 class="card-subtitle mb-2 text-muted">
+                                        @rating.ReviewerName - @rating.Score ⭐
+                                    </h6>
+                                    <p class="card-text">@rating.Review</p>
+                                    <small class="text-muted">@rating.ReviewDate.ToString("MMM dd, yyyy")</small>
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <p><em>No reviews yet.</em></p>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseDetails">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+@code {
+    private List<RecipeDto>? allRecipes;
+    private List<RecipeDto>? recipes;
+    private RecipeDto? selectedRecipe;
+    private string searchQuery = "";
+    private string? loadError;
+    private List<string> availableTags = new();
+    private string selectedTag = "";
+
+    private static readonly TimeSpan ApiTimeout = TimeSpan.FromSeconds(10);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAllRecipes();
+        await LoadTags();
+    }
+
+    private async Task LoadTags()
+    {
+        try
+        {
+            availableTags = await RecipeService.GetAllTagsAsync();
+        }
+        catch
+        {
+            availableTags = new List<string>();
+        }
+    }
+
+    private async Task LoadAllRecipes()
+    {
+        loadError = null;
+
+        using var cts = new CancellationTokenSource(ApiTimeout);
+        try
+        {
+            allRecipes = await RecipeService.GetAllRecipesAsync(cts.Token);
+            ApplyFilters();
+        }
+        catch (OperationCanceledException)
+        {
+            allRecipes = new List<RecipeDto>();
+            recipes = new List<RecipeDto>();
+            loadError = $"Request to the API timed out after {ApiTimeout.TotalSeconds} seconds. Make sure the API is running at http://localhost:5111.";
+        }
+        catch (Exception ex)
+        {
+            allRecipes = new List<RecipeDto>();
+            recipes = new List<RecipeDto>();
+            loadError = $"Failed to load recipes: {ex.Message}";
+        }
+    }
+
+    private void ApplyFilters()
+    {
+        if (allRecipes == null)
+        {
+            recipes = null;
+            return;
+        }
+
+        var filtered = allRecipes.AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(selectedTag))
+        {
+            filtered = filtered.Where(r => r.Tags.Contains(selectedTag));
+        }
+
+        if (!string.IsNullOrWhiteSpace(searchQuery))
+        {
+            var terms = searchQuery.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(t => t.Trim().ToLower())
+                .ToList();
+
+            filtered = filtered.Where(r =>
+                terms.Any(term =>
+                    r.Name.ToLower().Contains(term) ||
+                    r.Description.ToLower().Contains(term) ||
+                    r.Ingredients.Any(i => i.Name.ToLower().Contains(term))));
+        }
+
+        recipes = filtered.ToList();
+    }
+
+    private void SearchRecipes()
+    {
+        loadError = null;
+        ApplyFilters();
+    }
+
+    private async Task ClearFilters()
+    {
+        searchQuery = "";
+        selectedTag = "";
+        await LoadAllRecipes();
+    }
+
+    private async Task ShowRecipeDetails(int recipeId)
+    {
+        loadError = null;
+
+        using var cts = new CancellationTokenSource(ApiTimeout);
+        try
+        {
+            selectedRecipe = await RecipeService.GetRecipeByIdAsync(recipeId, cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            loadError = $"Loading recipe details timed out after {ApiTimeout.TotalSeconds} seconds. Make sure the API is running at http://localhost:5111.";
+        }
+        catch (Exception ex)
+        {
+            loadError = $"Failed to load recipe details: {ex.Message}";
+        }
+    }
+
+    private void CloseDetails()
+    {
+        selectedRecipe = null;
+    }
+}

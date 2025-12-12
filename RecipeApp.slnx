@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="RecipeApp.Api/RecipeApp.Api.csproj" />
+  <Project Path="RecipeApp.Client/RecipeApp.Client.csproj" />
+  <Project Path="RecipeApp.Shared/RecipeApp.Shared.csproj" />
+</Solution>

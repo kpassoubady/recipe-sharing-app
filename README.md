@@ -2,6 +2,18 @@
 
 A full-stack web application built with .NET 10 for discovering, sharing, and managing recipes. Features a RESTful API backend with ASP.NET Core and a modern Blazor WebAssembly frontend.
 
+## 🎬 Demo
+
+![Recipe Sharing App demo](docs/media/demo.gif)
+
+| Home | Recipe Collection |
+|---|---|
+| ![Home page](docs/media/01-home.png) | ![Recipe grid](docs/media/02-recipes.png) |
+
+| Search by ingredient | Filter by tag | Recipe details |
+|---|---|---|
+| ![Search results](docs/media/03-search.png) | ![Tag filter](docs/media/04-tag-filter.png) | ![Recipe detail modal](docs/media/05-recipe-detail.png) |
+
 ## 🚀 Features
 
 - **Recipe Management**: Complete CRUD operations for recipes
